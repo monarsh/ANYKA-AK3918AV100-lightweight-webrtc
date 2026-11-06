@@ -1,0 +1,5 @@
+menu "Anyka AK3918AV100 WebRTC"
+	source "$BR2_EXTERNAL_AKWEBRTC_PATH/package/anyka-av100-sdk/Config.in"
+	source "$BR2_EXTERNAL_AKWEBRTC_PATH/package/libpeer/Config.in"
+	source "$BR2_EXTERNAL_AKWEBRTC_PATH/package/akwebrtc/Config.in"
+endmenu

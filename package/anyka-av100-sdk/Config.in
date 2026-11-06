@@ -1,0 +1,47 @@
+config BR2_PACKAGE_ANYKA_AV100_SDK
+	bool "anyka-av100-sdk"
+	depends on BR2_arm
+	help
+	  Installs the closed-source media libraries, headers, kernel
+	  modules, ISP/sensor configs and sensor load scripts from a local
+	  copy of the AnyCloud39AV100 SDK (V1.12 or close to it).
+
+	  The SDK is not redistributable, so it is not downloaded: point
+	  BR2_PACKAGE_ANYKA_AV100_SDK_PATH at your copy. Run the SDK's own
+	  ./auto_build.sh once first so the kernel modules exist.
+
+if BR2_PACKAGE_ANYKA_AV100_SDK
+
+config BR2_PACKAGE_ANYKA_AV100_SDK_PATH
+	string "path to the AnyCloud39AV100 SDK"
+	default "$(BR2_EXTERNAL_AKWEBRTC_PATH)/../AnyCloud39AV100_SDK_V1.12"
+	help
+	  Top of the SDK tree (the directory holding config.mk,
+	  auto_build.sh, platform/ and rootfs/).
+
+config BR2_PACKAGE_ANYKA_AV100_SDK_LIB_DIR
+	string "media library directory, relative to the SDK"
+	default "platform/lib"
+	help
+	  Where libplat_*.so, libmpi_*.so, libapp_video.so, libakmedia.so
+	  and friends live in your SDK.
+
+config BR2_PACKAGE_ANYKA_AV100_SDK_SENSOR
+	string "sensor load script"
+	default "gc4653"
+	help
+	  Name of the sensor script from rootfs/rootfs/usr/sbin of the SDK
+	  (without .sh) run at boot to load ak_isp.ko and the sensor
+	  driver, e.g. gc4653, gc2053, sc2336, sc3336, sc401ai.
+
+config BR2_PACKAGE_ANYKA_AV100_SDK_ISP_CONF
+	string "ISP config file"
+	default "isp_gc4653_mipi_2lane_av100_hp.conf"
+	help
+	  ISP tuning file for the sensor, from rootfs/rootfs/etc of the
+	  SDK. Linked to /etc/isp/isp.conf, which akwebrtc loads.
+
+endif
+
+comment "anyka-av100-sdk needs an ARM (ARM926EJ-S) target"
+	depends on !BR2_arm

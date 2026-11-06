@@ -1,0 +1,40 @@
+config BR2_PACKAGE_LIBPEER
+	bool "libpeer"
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	depends on !BR2_STATIC_LIBS
+	help
+	  Portable WebRTC (ICE, DTLS-SRTP, RTP, SCTP data channels) in C
+	  for embedded devices. Builds its own copies of mbedTLS, libsrtp2
+	  and cJSON and links them statically into libpeer.so.
+
+	  https://github.com/sepfy/libpeer
+
+if BR2_PACKAGE_LIBPEER
+
+config BR2_PACKAGE_LIBPEER_VIDEO_FPS
+	int "H.264 frame rate for RTP timestamps"
+	default 15
+	help
+	  libpeer advances the H.264 RTP clock by 90000/FPS per frame,
+	  so this must match the encoder frame rate (akwebrtc -f).
+
+config BR2_PACKAGE_LIBPEER_USRSCTP
+	bool "use usrsctp for data channels"
+	help
+	  Build usrsctp for full SCTP data channels. When disabled, libpeer
+	  uses its built-in minimal SCTP, which is smaller and is all a
+	  video-only camera needs.
+
+config BR2_PACKAGE_LIBPEER_KEEPALIVE_MS
+	int "STUN keepalive interval (ms)"
+	default 5000
+	help
+	  Send a STUN binding request this often once connected. A viewer
+	  that stops answering for 3 intervals is closed, which frees its
+	  slot when a browser tab disappears without saying goodbye.
+	  0 disables keepalives.
+
+endif
+
+comment "libpeer needs a toolchain w/ threads, dynamic library"
+	depends on !BR2_TOOLCHAIN_HAS_THREADS || BR2_STATIC_LIBS

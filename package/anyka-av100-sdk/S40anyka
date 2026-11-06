@@ -1,0 +1,36 @@
+#!/bin/sh
+#
+# Load the Anyka AK3918AV100 drivers, mirroring the vendor's
+# /usr/sbin/main.sh, then the sensor + ISP via the SDK sensor script.
+#
+
+[ -r /etc/default/anyka ] && . /etc/default/anyka
+
+MODULES="ak_rtc ak_i2c ak_efuse ak_pcm ak_ion ak_leds ak_uio ak_eth"
+
+load() {
+	[ -f "/usr/modules/$1.ko" ] && insmod "/usr/modules/$1.ko" $2
+}
+
+start() {
+	printf "Loading Anyka drivers: "
+	mkdir -p /etc/config
+	for m in $MODULES; do
+		load "$m" && printf "%s " "$m"
+	done
+	if [ -n "$SENSOR" ] && [ -x "/usr/sbin/$SENSOR.sh" ]; then
+		"/usr/sbin/$SENSOR.sh" install && printf "%s" "$SENSOR"
+	fi
+	echo
+}
+
+stop() {
+	[ -n "$SENSOR" ] && [ -x "/usr/sbin/$SENSOR.sh" ] && "/usr/sbin/$SENSOR.sh" uninstall
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart) stop; start ;;
+	*) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

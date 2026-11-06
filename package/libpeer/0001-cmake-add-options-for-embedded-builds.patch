@@ -1,0 +1,115 @@
+From: akwebrtc <akwebrtc@localhost>
+Subject: [PATCH] cmake: add options for embedded builds
+
+Add three CMake knobs used by the Buildroot package:
+
+ - BUILD_EXAMPLES: skip examples/ (they pull in extra deps).
+ - ENABLE_USRSCTP: when OFF, do not build usrsctp and use libpeer's
+   built-in minimal SCTP (CONFIG_USE_USRSCTP=0). Smaller and avoids
+   usrsctp portability problems on uClibc.
+ - VIDEO_FPS: frame rate used for H.264 RTP timestamps (upstream
+   hard-codes 30 fps, which makes 15/20 fps cameras play back wrong).
+
+Also link mbedx509 before mbedcrypto: x509 needs pk symbols from
+crypto, and with static archives the old order fails at the final link
+of any program using libpeer.so ("undefined reference to
+mbedtls_pk_parse_subpubkey").
+
+---
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 83789d0..6a50a99 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -24,6 +24,9 @@ option(ADDRESS_SANITIZER "Build with AddressSanitizer." OFF)
+ option(MEMORY_SANITIZER "Build with MemorySanitizer." OFF)
+ option(THREAD_SANITIZER "Build with ThreadSanitizer." OFF)
+ option(UNDEFINED_BEHAVIOR_SANITIZER "Build with UndefinedBehaviorSanitizer." OFF)
++option(BUILD_EXAMPLES "Build the example programs" ON)
++option(ENABLE_USRSCTP "Use usrsctp for data channels (OFF uses the built-in minimal SCTP)" ON)
++set(VIDEO_FPS 30 CACHE STRING "Frame rate used for H.264 RTP timestamps")
+ 
+ include(ExternalProject)
+ 
+@@ -31,7 +34,13 @@ include_directories(${CMAKE_BINARY_DIR}/dist/include ${CMAKE_BINARY_DIR}/dist/in
+ 
+ link_directories(${CMAKE_BINARY_DIR}/dist/lib)
+ 
+-set(DEP_LIBS "srtp2" "usrsctp" "mbedtls" "mbedcrypto" "mbedx509" "cjson")
++if(ENABLE_USRSCTP)
++  set(DEP_LIBS "srtp2" "usrsctp" "mbedtls" "mbedx509" "mbedcrypto" "cjson")
++else()
++  set(DEP_LIBS "srtp2" "mbedtls" "mbedx509" "mbedcrypto" "cjson")
++  add_definitions("-DCONFIG_USE_USRSCTP=0")
++endif()
++add_definitions("-DCONFIG_VIDEO_FPS=${VIDEO_FPS}")
+ # Extended debug information (symbols, source code, and macro definitions)
+ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3")
+ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g3")
+@@ -62,7 +71,9 @@ endif()
+ add_definitions("-Wunused-variable -Werror=sequence-point -Werror=pointer-sign -Werror=return-type -Werror=sizeof-pointer-memaccess -Wincompatible-pointer-types -DHTTP_DO_NOT_USE_CUSTOM_CONFIG -DMQTT_DO_NOT_USE_CUSTOM_CONFIG")
+ 
+ add_subdirectory(src)
+-add_subdirectory(examples)
++if(BUILD_EXAMPLES)
++  add_subdirectory(examples)
++endif()
+ 
+ if(ENABLE_TESTS)
+   add_subdirectory(tests)
+@@ -100,6 +111,7 @@ ExternalProject_Add(srtp2
+     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+ )
+ 
++if(ENABLE_USRSCTP)
+ ExternalProject_Add(usrsctp
+   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/usrsctp
+   CMAKE_ARGS
+@@ -108,3 +120,4 @@ ExternalProject_Add(usrsctp
+     -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dist
+     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+ )
++endif()
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 7721f87..d6fe2df 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -16,7 +16,10 @@ include_directories(peer PUBLIC
+   ${MQTT_INCLUDE_PUBLIC_DIRS}
+ )
+ 
+-add_dependencies(peer cjson mbedtls usrsctp srtp2)
++add_dependencies(peer cjson mbedtls srtp2)
++if(ENABLE_USRSCTP)
++  add_dependencies(peer usrsctp)
++endif()
+ 
+ target_link_libraries(peer ${DEP_LIBS})
+ 
+diff --git a/src/config.h b/src/config.h
+index f5f9cda..32ee854 100644
+--- a/src/config.h
++++ b/src/config.h
+@@ -70,6 +70,10 @@
+ #error "CONFIG_STUN_KEEPALIVE_TIMEOUT must be greater than CONFIG_STUN_KEEPALIVE_INTERVAL"
+ #endif
+ 
++#ifndef CONFIG_VIDEO_FPS
++#define CONFIG_VIDEO_FPS 30
++#endif
++
+ #ifndef CONFIG_AUDIO_DURATION
+ #define CONFIG_AUDIO_DURATION 20
+ #endif
+diff --git a/src/rtp.c b/src/rtp.c
+index 21d29f7..802458f 100644
+--- a/src/rtp.c
++++ b/src/rtp.c
+@@ -183,7 +183,7 @@ void rtp_encoder_init(RtpEncoder* rtp_encoder, MediaCodec codec, RtpOnPacket on_
+     case CODEC_H264:
+       rtp_encoder->type = PT_H264;
+       rtp_encoder->ssrc = SSRC_H264;
+-      rtp_encoder->timestamp_increment = 90000 / 30;  // 30 FPS.
++      rtp_encoder->timestamp_increment = 90000 / CONFIG_VIDEO_FPS;
+       rtp_encoder->encode_func = rtp_encoder_encode_h264;
+       break;
+     case CODEC_PCMA:

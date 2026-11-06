@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# Start the WebRTC streamer. Options live in /etc/default/akwebrtc.
+#
+
+DAEMON=/usr/bin/akwebrtc
+PIDFILE=/var/run/akwebrtc.pid
+AKWEBRTC_ARGS=""
+
+[ -r /etc/default/akwebrtc ] && . /etc/default/akwebrtc
+
+start() {
+	printf "Starting akwebrtc: "
+	start-stop-daemon -S -q -b -m -p "$PIDFILE" -x "$DAEMON" -- $AKWEBRTC_ARGS \
+		&& echo "OK" || echo "FAIL"
+}
+
+stop() {
+	printf "Stopping akwebrtc: "
+	start-stop-daemon -K -q -p "$PIDFILE" && echo "OK" || echo "FAIL"
+	rm -f "$PIDFILE"
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; sleep 1; start ;;
+	*) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

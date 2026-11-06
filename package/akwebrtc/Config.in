@@ -1,0 +1,25 @@
+config BR2_PACKAGE_AKWEBRTC
+	bool "akwebrtc"
+	depends on BR2_arm
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	depends on !BR2_STATIC_LIBS
+	select BR2_PACKAGE_LIBPEER
+	select BR2_PACKAGE_ANYKA_AV100_SDK
+	help
+	  Lightweight WebRTC streamer for Anyka AK3918AV100 cameras:
+	  H.264 (+ optional G.711A) from the SoC encoder, sent to browsers
+	  with libpeer. Serves its own player page and HTTP signalling.
+
+if BR2_PACKAGE_AKWEBRTC
+
+config BR2_PACKAGE_AKWEBRTC_ARGS
+	string "command line options"
+	default "-c 1 -W 640 -H 360 -f 15 -b 512 -m 2"
+	help
+	  Options passed by /etc/init.d/S95akwebrtc. Keep -f equal to
+	  libpeer's VIDEO_FPS. Add -a for microphone audio and
+	  -S stun:host:port when viewers are not on the camera's LAN.
+	  Saved to /etc/default/akwebrtc, which can be edited on the
+	  device.
+
+endif

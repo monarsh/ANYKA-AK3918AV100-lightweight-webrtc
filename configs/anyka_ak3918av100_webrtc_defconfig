@@ -1,0 +1,44 @@
+# Anyka AK3918AV100 (ARM926EJ-S, no VFP) + libpeer WebRTC streamer.
+#
+# Userspace only: the kernel (4.4.282) and U-Boot come from the vendor
+# SDK's ./auto_build.sh, because the media drivers are prebuilt modules
+# tied to that exact kernel.
+BR2_arm=y
+BR2_arm926t=y
+
+# Vendor toolchain from the AnyCloud39AV100 SDK (gcc 5.5, uClibc).
+# If Buildroot reports a mismatch (wchar, locale, RPC, SSP, C++), change
+# the option it names: it checks these against the real toolchain.
+BR2_TOOLCHAIN_EXTERNAL=y
+BR2_TOOLCHAIN_EXTERNAL_CUSTOM=y
+BR2_TOOLCHAIN_EXTERNAL_PREINSTALLED=y
+BR2_TOOLCHAIN_EXTERNAL_PATH="/opt/arm-anycloud-linux-uclibcgnueabi"
+BR2_TOOLCHAIN_EXTERNAL_CUSTOM_PREFIX="arm-anycloud-linux-uclibcgnueabi"
+BR2_TOOLCHAIN_EXTERNAL_GCC_5=y
+BR2_TOOLCHAIN_EXTERNAL_HEADERS_4_4=y
+BR2_TOOLCHAIN_EXTERNAL_CUSTOM_UCLIBC=y
+BR2_TOOLCHAIN_EXTERNAL_WCHAR=y
+BR2_TOOLCHAIN_EXTERNAL_HAS_THREADS_NPTL=y
+BR2_TOOLCHAIN_EXTERNAL_CXX=y
+
+# Optimise for size: flash is 8-16 MB.
+BR2_OPTIMIZE_S=y
+
+BR2_TARGET_GENERIC_HOSTNAME="akcam"
+BR2_TARGET_GENERIC_ISSUE="Anyka AK3918AV100 WebRTC camera"
+BR2_TARGET_GENERIC_ROOT_PASSWD="akcam"
+BR2_SYSTEM_DHCP="eth0"
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_AKWEBRTC_PATH)/board/anyka/ak3918av100/post-build.sh"
+
+# Small flash: squashfs + xz, no tarball.
+BR2_TARGET_ROOTFS_SQUASHFS=y
+BR2_TARGET_ROOTFS_SQUASHFS4_XZ=y
+# BR2_TARGET_ROOTFS_TAR is not set
+
+BR2_PACKAGE_DROPBEAR=y
+BR2_PACKAGE_AKWEBRTC=y
+BR2_PACKAGE_AKWEBRTC_ARGS="-c 1 -W 640 -H 360 -f 15 -b 512 -m 2"
+BR2_PACKAGE_LIBPEER_VIDEO_FPS=15
+BR2_PACKAGE_ANYKA_AV100_SDK_PATH="$(BR2_EXTERNAL_AKWEBRTC_PATH)/../AnyCloud39AV100_SDK_V1.12"
+BR2_PACKAGE_ANYKA_AV100_SDK_SENSOR="gc4653"
+BR2_PACKAGE_ANYKA_AV100_SDK_ISP_CONF="isp_gc4653_mipi_2lane_av100_hp.conf"
